@@ -23,6 +23,12 @@ export class EarthEngineService {
     return polygonArea;
   }
 
+  getCenterOfPolygon(coordinates: any) {
+    const polygon = ee.Geometry.Polygon(coordinates);
+    const center = polygon.centroid().getInfo();
+    return center;
+  }
+
   calculateNDVI(coordinates: any) {
     const polygon = ee.Geometry.Polygon(coordinates);
 

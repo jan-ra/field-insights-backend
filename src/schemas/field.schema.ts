@@ -16,6 +16,9 @@ export class Field {
 
   @Prop()
   polygon: number[][];
+
+  @Prop()
+  center: number[];
 }
 
 export const FieldSchema = SchemaFactory.createForClass(Field);

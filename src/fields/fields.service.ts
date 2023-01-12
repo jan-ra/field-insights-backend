@@ -15,8 +15,15 @@ export class FieldsService {
     const fieldSize = this.earthEngineService.getSizeOfPolygon(
       createFieldDto.polygon,
     );
+    const center = this.earthEngineService.getCenterOfPolygon(
+      createFieldDto.polygon,
+    );
     //this.earthEngineService.calculateNDVI(createFieldDto.polygon);
-    const createField = new this.fieldModel({ ...createFieldDto, fieldSize });
+    const createField = new this.fieldModel({
+      ...createFieldDto,
+      fieldSize,
+      center,
+    });
     return createField.save();
   }
 
