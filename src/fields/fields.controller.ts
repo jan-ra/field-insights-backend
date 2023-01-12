@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Post } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post } from '@nestjs/common';
 import { CreateFieldDto } from './dto/create-field.dto';
 import { FieldsService } from './fields.service';
 
@@ -12,7 +12,20 @@ export class FieldsController {
   }
 
   @Get()
-  list() {
-    return this.fieldsService.findAll();
+  async list() {
+    const list = await this.fieldsService.findAll();
+    return list.map((e) => ({
+      //@ts-ignore
+      ...e._doc,
+      currentMeanNDVI: 0.7,
+      currentMeanNDWI: 0.9,
+    }));
+  }
+
+  @Get(':id')
+  async findById(@Param('id') id: string) {
+    const element = await this.fieldsService.findById(id);
+    //@ts-ignore
+    return { ...element._doc, currentMeanNDVI: 0.7, currentMeanNDWI: 0.9 };
   }
 }

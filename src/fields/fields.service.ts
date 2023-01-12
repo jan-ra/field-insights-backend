@@ -23,4 +23,8 @@ export class FieldsService {
   async findAll(): Promise<Field[]> {
     return this.fieldModel.find().exec();
   }
+
+  async findById(id: string): Promise<Field> {
+    return this.fieldModel.findById(id).exec();
+  }
 }
