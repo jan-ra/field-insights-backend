@@ -4,6 +4,7 @@ import { EarthEngineController } from './earth-engine.controller';
 
 @Module({
   providers: [EarthEngineService],
-  controllers: [EarthEngineController]
+  controllers: [EarthEngineController],
+  exports: [EarthEngineService],
 })
 export class EarthEngineModule {}

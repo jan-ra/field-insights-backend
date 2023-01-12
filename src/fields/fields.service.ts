@@ -3,15 +3,21 @@ import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Field, FieldDocument } from 'src/schemas/field.schema';
 import { CreateFieldDto } from './dto/create-field.dto';
+import { EarthEngineService } from 'src/earth-engine/earth-engine.service';
 @Injectable()
 export class FieldsService {
   constructor(
     @InjectModel(Field.name) private fieldModel: Model<FieldDocument>,
+    private earthEngineService: EarthEngineService,
   ) {}
 
   async create(createFieldDto: CreateFieldDto): Promise<Field> {
-    const createdCat = new this.fieldModel(createFieldDto);
-    return createdCat.save();
+    const fieldSize = this.earthEngineService.getSizeOfPolygon(
+      createFieldDto.polygon,
+    );
+    //this.earthEngineService.calculateNDVI(createFieldDto.polygon);
+    const createField = new this.fieldModel({ ...createFieldDto, fieldSize });
+    return createField.save();
   }
 
   async findAll(): Promise<Field[]> {
