@@ -1,10 +1,12 @@
 import { Injectable } from '@nestjs/common';
 import * as ee from '@google/earthengine';
 // eslint-disable-next-line @typescript-eslint/no-var-requires
-const privateKey = require('../../ee-key.json');
+//const privateKey = require('../../ee-key.json');
+require('dotenv').config();
 @Injectable()
 export class EarthEngineService {
   constructor() {
+    const privateKey = JSON.parse(process.env.EE_KEY);
     ee.data.authenticateViaPrivateKey(privateKey);
   }
 
