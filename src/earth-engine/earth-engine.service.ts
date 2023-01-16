@@ -1,13 +1,30 @@
 import { Injectable } from '@nestjs/common';
 import * as ee from '@google/earthengine';
+import * as moment from 'moment';
 // eslint-disable-next-line @typescript-eslint/no-var-requires
-//const privateKey = require('../../ee-key.json');
 require('dotenv').config();
+
 @Injectable()
 export class EarthEngineService {
   constructor() {
     const privateKey = JSON.parse(process.env.EE_KEY);
-    ee.data.authenticateViaPrivateKey(privateKey);
+
+    const runAnalysis = function () {
+      ee.initialize(
+        null,
+        null,
+        function () {
+          // ... run analysis ...
+        },
+        function (e) {
+          console.error('Initialization error: ' + e);
+        },
+      );
+    };
+
+    ee.data.authenticateViaPrivateKey(privateKey, runAnalysis, function (e) {
+      console.error('Authentication error: ' + e);
+    });
   }
 
   getmap() {
@@ -29,11 +46,46 @@ export class EarthEngineService {
     return center;
   }
 
-  calculateNDVI(coordinates: any) {
+  calculateIndicesOverTime(coordinates: any) {
     const polygon = ee.Geometry.Polygon(coordinates);
 
-    const collection = this.generateCollection(polygon);
-    console.log(collection.getInfo());
+    let s2_sr = ee
+      .ImageCollection('COPERNICUS/S2_SR_HARMONIZED')
+      .filterMetadata('CLOUDY_PIXEL_PERCENTAGE', 'less_than', 30);
+
+    //apply cloud masks
+    s2_sr = s2_sr.map((i) => this.maskS2clouds(i));
+    s2_sr = s2_sr.map((i) => this.keepFieldPixel(i));
+
+    // apply index layers
+    s2_sr = s2_sr.map((i) => this.getNDVI(i));
+    s2_sr = s2_sr.map((i) => this.getEVI(i));
+    s2_sr = s2_sr.map((i) => this.getNDWI(i));
+
+    //filter correct ima
+    const col = s2_sr
+      .filterBounds(polygon)
+      .filterDate('2021', '2022')
+      .select(['NDVI', 'NDWI', 'EVI']);
+
+    let image = col.first();
+    let ndvis = col.map((i) => {
+      const reduce = i
+        .reduceRegion(ee.Reducer.mean(), polygon)
+        .select(['NDVI', 'EVI', 'NDWI']);
+      return ee.Feature(null, {
+        date: i.date().format('YYYY-MM-dd'),
+        NDVI: reduce.get('NDVI'),
+        EVI: reduce.get('EVI'),
+        NDWI: reduce.get('NDWI'),
+      });
+    });
+
+    const res = ndvis.getInfo();
+    //console.log(image.getInfo());
+    //console.log(res.features.map((e) => e.properties));
+
+    return res.features.map((e) => e.properties);
   }
 
   private getNDVI(image: any) {
@@ -45,7 +97,18 @@ export class EarthEngineService {
       .rename('NDVI');
 
     image = image.addBands(NDVI);
+    return image;
+  }
 
+  private getNDWI(image: any) {
+    const NDWI = image
+      .expression('(NIR - GREEN) / (NIR +  GREEN)', {
+        NIR: image.select('B8').divide(10000),
+        GREEN: image.select('B3').divide(10000),
+      })
+      .rename('NDWI');
+
+    image = image.addBands(NDWI);
     return image;
   }
 
@@ -63,6 +126,8 @@ export class EarthEngineService {
     return image;
   }
 
+  // this return in the other way of stuff
+
   private maskS2clouds(image: any) {
     const qa = image.select('QA60');
     const cloudBitMask = 1 << 10;
@@ -75,47 +140,15 @@ export class EarthEngineService {
     return image.updateMask(mask).selfMask();
   }
 
-  private generateCollection(geometry: any) {
-    const startDate = ee.Date('2015-04-10');
-    const endDate = ee.Date('2016-04-11');
+  private keepFieldPixel(image) {
+    // Select SCL layer
+    const scl = image.select('SCL');
+    // Select vegetation and soil pixels
+    const veg = scl.eq(4); // 4 = Vegetation
+    const soil = scl.eq(5); // 5 = Bare soils
 
-    const nWeeks = ee
-      .Number(endDate.difference(startDate, 'week'))
-      .subtract(1)
-      .round();
+    const mask = veg.eq(1).or(soil.eq(1));
 
-    let s2_sr = ee
-      .ImageCollection('COPERNICUS/S2_SR_HARMONIZED')
-      .filterMetadata('CLOUDY_PIXEL_PERCENTAGE', 'less_than', 20);
-
-    s2_sr = s2_sr.map(this.maskS2clouds);
-    s2_sr = s2_sr.map(this.getNDVI);
-    s2_sr = s2_sr.map(this.getEVI);
-
-    const byWeek = ee.ImageCollection(
-      ee.List.sequence(0, nWeeks, 1).map((n) => {
-        const initial = startDate.advance(n, 'week');
-        const end = initial.advance(1, 'week');
-        const image = s2_sr
-          .filterDate(initial, end)
-          .filterBounds(geometry)
-          .select(['NDVI', 'EVI'])
-          .reduce(ee.Reducer.mean());
-
-        const ndvi_evi = ee.Algorithms.If(
-          image.bandNames().length().gt(0),
-          image.set('system:time_start', initial.millis()),
-          ee
-            .Image()
-            .addBands(0)
-            .rename(['NDVI_mean', 'EVI_mean'])
-            .selfMask()
-            .set('system:time_start', initial.millis()),
-        );
-        return ndvi_evi;
-      }),
-    );
-
-    return byWeek;
+    return image.updateMask(mask).selfMask();
   }
 }

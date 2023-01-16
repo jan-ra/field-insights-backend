@@ -13,19 +13,11 @@ export class FieldsController {
 
   @Get()
   async list() {
-    const list = await this.fieldsService.findAll();
-    return list.map((e) => ({
-      //@ts-ignore
-      ...e._doc,
-      currentMeanNDVI: 0.7,
-      currentMeanNDWI: 0.9,
-    }));
+    return this.fieldsService.findAll();
   }
 
   @Get(':id')
   async findById(@Param('id') id: string) {
-    const element = await this.fieldsService.findById(id);
-    //@ts-ignore
-    return { ...element._doc, currentMeanNDVI: 0.7, currentMeanNDWI: 0.9 };
+    return this.fieldsService.findById(id);
   }
 }

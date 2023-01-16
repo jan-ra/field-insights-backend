@@ -11,27 +11,45 @@ export class FieldsService {
     private earthEngineService: EarthEngineService,
   ) {}
 
-  async create(createFieldDto: CreateFieldDto): Promise<Field> {
+  create(createFieldDto: CreateFieldDto): Promise<Field> {
     const fieldSize = this.earthEngineService.getSizeOfPolygon(
       createFieldDto.polygon,
     );
     const center = this.earthEngineService.getCenterOfPolygon(
       createFieldDto.polygon,
     );
-    //this.earthEngineService.calculateNDVI(createFieldDto.polygon);
+    const indexMeans = this.earthEngineService.calculateIndicesOverTime(
+      createFieldDto.polygon,
+    );
     const createField = new this.fieldModel({
       ...createFieldDto,
       fieldSize,
       center,
+      indexMeans,
     });
     return createField.save();
   }
 
   async findAll(): Promise<Field[]> {
-    return this.fieldModel.find().exec();
+    const fields = await this.fieldModel.find().lean().exec();
+
+    return fields.map((f) => this.parsefield(f));
   }
 
   async findById(id: string): Promise<Field> {
-    return this.fieldModel.findById(id).exec();
+    const field = await this.fieldModel.findById(id).lean().exec();
+    return this.parsefield(field);
+  }
+
+  private parsefield(field: any) {
+    const { polygon, center, ...rest } = field;
+    const nPoly = polygon.map((e) => ({ lat: e[0], long: e[1] }));
+    console.log(center);
+
+    const nCenter = {
+      lat: center[0].coordinates[0],
+      long: center[0].coordinates[1],
+    };
+    return { polygon: nPoly, center: nCenter, ...rest };
   }
 }

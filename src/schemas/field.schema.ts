@@ -19,6 +19,9 @@ export class Field {
 
   @Prop()
   center: number[];
+
+  @Prop()
+  indexMeans: any[];
 }
 
 export const FieldSchema = SchemaFactory.createForClass(Field);
