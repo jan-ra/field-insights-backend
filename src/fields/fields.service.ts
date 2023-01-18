@@ -43,12 +43,12 @@ export class FieldsService {
 
   private parsefield(field: any) {
     const { polygon, center, ...rest } = field;
-    const nPoly = polygon.map((e) => ({ lat: e[0], long: e[1] }));
+    const nPoly = polygon.map((e) => ({ lat: e[1], long: e[0] }));
     console.log(center);
 
     const nCenter = {
-      lat: center[0].coordinates[0],
-      long: center[0].coordinates[1],
+      lat: center[0].coordinates[1],
+      long: center[0].coordinates[0],
     };
     return { polygon: nPoly, center: nCenter, ...rest };
   }

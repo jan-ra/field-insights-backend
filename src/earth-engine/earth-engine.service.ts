@@ -102,7 +102,7 @@ export class EarthEngineService {
 
   private getNDWI(image: any) {
     const NDWI = image
-      .expression('(NIR - GREEN) / (NIR +  GREEN)', {
+      .expression('(GREEN - NIR ) / (GREEN + NIR)', {
         NIR: image.select('B8').divide(10000),
         GREEN: image.select('B3').divide(10000),
       })
