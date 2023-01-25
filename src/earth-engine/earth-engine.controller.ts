@@ -9,4 +9,9 @@ export class EarthEngineController {
   get() {
     return this.earthEngineService.getmap();
   }
+
+  @Get('dataset')
+  dataset() {
+    return this.earthEngineService.createTrainingSet();
+  }
 }
