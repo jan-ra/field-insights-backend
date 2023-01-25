@@ -1,6 +1,5 @@
 import { Injectable } from '@nestjs/common';
 import * as ee from '@google/earthengine';
-import * as moment from 'moment';
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 require('dotenv').config();
 
@@ -53,9 +52,18 @@ export class EarthEngineService {
       .ImageCollection('COPERNICUS/S2_SR_HARMONIZED')
       .filterMetadata('CLOUDY_PIXEL_PERCENTAGE', 'less_than', 30);
 
+    const dw = ee.ImageCollection('GOOGLE/DYNAMICWORLD/V1');
+
     //apply cloud masks
     s2_sr = s2_sr.map((i) => this.maskS2clouds(i));
     s2_sr = s2_sr.map((i) => this.keepFieldPixel(i));
+    /*     s2_sr = s2_sr.map((i) => {
+      const id = i.get('system:index');
+      const fdw = dw.filter(ee.Filter.eq('system:index', id));
+      const dwImage = ee.Image(fdw.first());
+      return this.getDW(i, dwImage);
+    }, true);
+    s2_sr = s2_sr.map((i) => this.keepCropPixels(i)); */
 
     // apply index layers
     s2_sr = s2_sr.map((i) => this.getNDVI(i));
@@ -65,13 +73,31 @@ export class EarthEngineService {
     //filter correct ima
     const col = s2_sr
       .filterBounds(polygon)
-      .filterDate('2021', '2022')
+      .filterDate('2022-01', '2022-08')
       .select(['NDVI', 'NDWI', 'EVI']);
 
-    let image = col.first();
-    let ndvis = col.map((i) => {
+    /* col = col.map((i) => {
+      const id = i.get('system:index');
+      const fdw = dw.filter(ee.Filter.eq('system:index', id));
+      const dwImage = ee.Image(fdw.first());
+      return this.getDW(i, dwImage);
+    }, true);
+
+    col = col.map((i) => this.keepCropPixels(i));
+
+    console.log(col.getInfo()); */
+
+    //let image = col.first();
+    //const id = image.get('system:index');
+    //const fdw = dw.filter(ee.Filter.eq('system:index', id));
+    //const dwImage = ee.Image(fdw.first());
+
+    //image = image.addBands(dwImage, ['crops']);
+    //console.log(image.getInfo());
+
+    const ndvis = col.map((i) => {
       const reduce = i
-        .reduceRegion(ee.Reducer.mean(), polygon)
+        .reduceRegion(ee.Reducer.mean(), polygon, 50)
         .select(['NDVI', 'EVI', 'NDWI']);
       return ee.Feature(null, {
         date: i.date().format('YYYY-MM-dd'),
@@ -82,9 +108,6 @@ export class EarthEngineService {
     });
 
     const res = ndvis.getInfo();
-    //console.log(image.getInfo());
-    //console.log(res.features.map((e) => e.properties));
-
     return res.features.map((e) => e.properties);
   }
 
@@ -101,12 +124,7 @@ export class EarthEngineService {
   }
 
   private getNDWI(image: any) {
-    const NDWI = image
-      .expression('(GREEN - NIR ) / (GREEN + NIR)', {
-        NIR: image.select('B8').divide(10000),
-        GREEN: image.select('B3').divide(10000),
-      })
-      .rename('NDWI');
+    const NDWI = image.normalizedDifference(['B3', 'B8']).rename('NDWI');
 
     image = image.addBands(NDWI);
     return image;
@@ -122,8 +140,16 @@ export class EarthEngineService {
       .rename('EVI');
 
     image = image.addBands(EVI);
-
     return image;
+  }
+
+  private getDW(image: any, dwImage: any) {
+    const dimage = ee.Algorithms.If(
+      dwImage,
+      image.addBands(dwImage, ['crops']),
+      null,
+    );
+    return dimage;
   }
 
   // this return in the other way of stuff
@@ -150,5 +176,19 @@ export class EarthEngineService {
     const mask = veg.eq(1).or(soil.eq(1));
 
     return image.updateMask(mask).selfMask();
+  }
+
+  private keepCropPixels(image) {
+    const crops = image.select('crops');
+    const mask = crops.gt(0.2);
+    return image.updateMask(mask).selfMask();
+  }
+
+  createTrainingSet() {
+    const dataset = ee.FeatureCollection('TIGER/2016/Counties');
+    const ex = dataset.first().getInfo();
+    console.log(ex);
+
+    console.log(this.calculateIndicesOverTime(ex.geometry.coordinates));
   }
 }
