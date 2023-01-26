@@ -54,10 +54,126 @@ export class FieldsService {
     };
 
     const added = indexMeans.map((e) => {
-      const inFrame = moment(e.date).isAfter('2022-03-01');
-      const monthdiff = moment(e.date).diff('2022-03-01', 'month', true);
-      return { ...e, predictedyield: inFrame ? 500 + monthdiff * 10 : null };
+      const fyield = this.provideEstimate(field.name, e.date);
+      return { ...e, predictedyield: fyield };
     });
     return { polygon: nPoly, center: nCenter, indexMeans: added, ...rest };
+  }
+
+  private provideEstimate(id, date) {
+    const corn1 = [
+      {
+        date: '2022-03-16',
+        predictedyield: 608903.725907,
+      },
+      {
+        date: '2022-03-18',
+        predictedyield: 608903.725907,
+      },
+      {
+        date: '2022-03-21',
+        predictedyield: 608903.725907,
+      },
+      {
+        date: '2022-03-23',
+        predictedyield: 608903.725907,
+      },
+      {
+        date: '2022-03-26',
+        predictedyield: 608903.725907,
+      },
+      {
+        date: '2022-04-17',
+        predictedyield: 595797.926347,
+      },
+      {
+        date: '2022-04-20',
+        predictedyield: 595797.926347,
+      },
+      {
+        date: '2022-04-22',
+        predictedyield: 600895.087177,
+      },
+      {
+        date: '2022-05-02',
+        predictedyield: 608903.725907,
+      },
+      {
+        date: '2022-05-12',
+        predictedyield: 595797.926347,
+      },
+      {
+        date: '2022-06-09',
+        predictedyield: 592228.373711,
+      },
+      {
+        date: '2022-06-11',
+        predictedyield: 589178.326001,
+      },
+      {
+        date: '2022-06-16',
+        predictedyield: 582907.769677,
+      },
+      {
+        date: '2022-07-04',
+        predictedyield: 582907.769677,
+      },
+      {
+        date: '2022-07-19',
+        predictedyield: 582907.769677,
+      },
+      {
+        date: '2022-07-24',
+        predictedyield: 582907.769677,
+      },
+    ];
+
+    const corn2 = [
+      {
+        date: '2022-04-17',
+        predictedyield: 592228.373711,
+      },
+      {
+        date: '2022-04-20',
+        predictedyield: 592228.373711,
+      },
+      {
+        date: '2022-04-22',
+        predictedyield: 592228.373711,
+      },
+      {
+        date: '2022-05-02',
+        predictedyield: 592228.373711,
+      },
+      {
+        date: '2022-05-12',
+        predictedyield: 580051.107897,
+      },
+      {
+        date: '2022-06-09',
+        predictedyield: 582907.769677,
+      },
+      {
+        date: '2022-06-11',
+        predictedyield: 580051.107897,
+      },
+      {
+        date: '2022-07-04',
+        predictedyield: 580051.107897,
+      },
+      {
+        date: '2022-07-19',
+        predictedyield: 580051.107897,
+      },
+      {
+        date: '2022-07-24',
+        predictedyield: 580051.107897,
+      },
+    ];
+
+    const data = id == 'corn 1' ? corn1 : corn2;
+    const res = data.find((e) => e.date == date);
+
+    return res ? res.predictedyield : null;
   }
 }
